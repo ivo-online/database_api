@@ -24,8 +24,9 @@ const client = new MongoClient(uri, {
 const statusTexts = [
     "Database connection failed",
     "OK",
-    "No results found in database",
-    "Invalid object type - allowed characters are: A-Z, a-z, 0-9, - and _"        
+    "No match found in database",
+    "Invalid object type - allowed characters are: A-Z, a-z, 0-9, - and _",
+    "Please provide a valid id in the querystring, consisting of 24 characters"
 ]
 
 validateParameter = (txt, type) => { 
@@ -58,12 +59,14 @@ app.get('/management/status', (req, res) => {
     res.set('Content-Type', 'application/json')
 
     if (dbStatus) {
+        // we're up and running
         const response = '{' +
             '"statusCode": 1,' +
             '"statusText": "' + statusTexts[1] + '"' +
         '}'
         res.send(response)
     } else {
+        // there is no working database connection
         const response = '{' +
             '"statusCode": 0,' +
             '"statusText": "' + statusTexts[0] + '"' +
@@ -105,6 +108,7 @@ app.get('/management/generatetestdata', async(req, res) => {
         '}'
         res.send(response)
     } else {
+        // there is no working database connection
         const response = '{' +
             '"statusCode": 0,' +
             '"statusText": "' + statusTexts[0] + '"' +
@@ -126,6 +130,7 @@ app.get('/management/cleardatabase', async(req, res) => {
         '}'
         res.send(response)
     } else {
+        // there is no working database connection
         const response = '{' +
             '"statusCode": 0,' +
             '"statusText": "' + statusTexts[0] + '"' +
@@ -141,7 +146,7 @@ app.get('/:objectType', async(req, res) => {
 
         if (dbStatus) {
             const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
-            // if the userr requests a specific id in the querystring, see if it is valid
+            // if the user requests a specific id in the querystring, see if it is valid
             // if so, try to find this id in the database. If the id is invalid, no data is returned by default
             if (req.query.id ) {
                 if ( validateParameter(req.query.id, "id") ) {
@@ -153,10 +158,11 @@ app.get('/:objectType', async(req, res) => {
                 var data = await collection.find({ objectType: req.params.objectType, _id: new ObjectId(id) }).toArray()
             } else {
                 // TODO: VALIDATE searchField and searchString
-                // if no id was specified, see if there was another search paramater in the querystring. If so, construct a db query to search for requested data
+                // if no id was specified, see if there was another search parameter in the querystring. If so, construct a db query to search for requested data
+                // if multiple parameters are provided, the first is used and the rest is ignored
                 if ( Object.keys(req.query).length ) {
                     const searchField = Object.keys(req.query)[0]
-                    const searchString = req.query[Object.keys(req.query)[0]]
+                    const searchString = req.query[searchField ]
                     const dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "data.' + searchField + '": "' + searchString + '"}')
                     var data = await collection.find(dbQuery).toArray()
                 } else {
@@ -181,6 +187,65 @@ app.get('/:objectType', async(req, res) => {
                         '"statusText": "' + statusTexts[2] + '"' +
                     '}'      
                 res.send(response)
+            }
+        } else {
+            // there is no working database connection
+            const response = '{' +
+                    '"records": [],' +
+                    '"statusCode": 0,' +
+                    '"statusText": "' + statusTexts[0] + '"' +
+                '}'
+            res.send(response)
+        }
+    } else {
+        // the requested objectType had invalid characters
+        const response = '{' +
+            '"records": [],' +
+            '"statusCode": 3,' +
+            '"statusText": "' + statusTexts[3] + '"' +
+        '}'
+        res.send(response)        
+    }
+})
+
+app.delete('/:objectType', async(req, res) => {
+    res.set('Content-Type', 'application/json')
+
+    if (validateParameter(req.params.objectType, "objectType")) {
+
+        if (dbStatus) {
+            const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
+            // if the user requests a specific id in the querystring, see if it is valid
+            // if so, try to find this id in the database. 
+            if (req.query.id && validateParameter(req.query.id, "id") ) {
+                var id = req.query.id
+                var result = await collection.deleteOne({ objectType: req.params.objectType, _id: new ObjectId(id) })
+
+                if (result["deletedCount"]) {
+                    // an item was deleted
+                    const response = '{' +
+                            '"itemsDeleted":' +  result["deletedCount"] + ',' +
+                            '"statusCode": 1,' +
+                            '"statusText": "' + statusTexts[1] + '"' +
+                        '}'
+                    res.send(response)
+                } else {
+                    // no item was deleted, no match was found for the provided id and objectType
+                    const response = '{' +
+                            '"records": [],' +
+                            '"statusCode": 2,' +
+                            '"statusText": "' + statusTexts[2] + '"' +
+                        '}'      
+                    res.send(response)
+                }                
+            } else {
+                // no id found in querystring or invalid id provided
+                const response = '{' +
+                '"records": [],' +
+                '"statusCode": 4,' +
+                '"statusText": "' + statusTexts[4] + '"' +
+            '}'
+        res.send(response)
             }
         } else {
             // there is no working database connection
