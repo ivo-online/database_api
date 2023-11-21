@@ -268,6 +268,6 @@ app.delete('/:objectType', async(req, res) => {
 })
 
 app.listen(process.env.PORT, () => {
-    console.log('Database access API listening on port ' + process.env.PORT)
+    console.log(API for Database access listening on port ' + process.env.PORT)
 })
 
