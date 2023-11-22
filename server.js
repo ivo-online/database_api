@@ -60,7 +60,7 @@ client.connect()
         console.log('Database connection error:\n', err, '\nFor uri: ', uri)
     })
 
-app.get('/management/status', (req, res) => {
+app.get('/maintenance/status', (req, res) => {
     res.set('Content-Type', 'application/json')
 
     if (dbStatus) {
@@ -80,7 +80,7 @@ app.get('/management/status', (req, res) => {
     }
 })
 
-app.get('/management/generatetestdata', async(req, res) => {
+app.get('/maintenance/generatetestdata', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
     if (dbStatus) {
@@ -122,7 +122,7 @@ app.get('/management/generatetestdata', async(req, res) => {
     }
 })
 
-app.get('/management/cleardatabase', async(req, res) => {
+app.get('/maintenance/cleardatabase', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
     if (dbStatus) {
