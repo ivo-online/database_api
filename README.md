@@ -35,7 +35,9 @@ Get requests allow you to retrieve information from the database. You can either
 * Returns: all objects of the specified objectType
 
 Example: `GET localhost:3000/person`  
-Response: `{
+Response:
+```json
+{
     "records": [
         {
             "_id": "655de960bc9df3867465dd81",
@@ -58,7 +60,8 @@ Response: `{
     ],
     "statusCode": 1,
     "statusText": "OK"
-}`
+}
+```
 #### search by id
 * HTTP request method: GET
 * URL: /_objectType_?id=_objectID_
@@ -66,7 +69,9 @@ Response: `{
 * Returns: the requested object
 
 Example: `GET localhost:3000/person?id=655de960bc9df3867465dd81`  
-Response: `{
+Response: 
+```json
+{
     "records": [
         {
             "_id": "655de960bc9df3867465dd81",
@@ -80,7 +85,8 @@ Response: `{
     ],
     "statusCode": 1,
     "statusText": "OK"
-}`
+}
+```
 #### search by value
 * HTTP request method: GET
 * URL: /_objectType_?_key_=_value_
@@ -88,7 +94,9 @@ Response: `{
 * Returns: one or more objects, matching your search criteria
 
 Example: `localhost:3000/person?nationality=French`  
-Response: `{
+Response:
+```json
+{
     "records": [
         {
             "_id": "655deea270274f53ebf00c93",
@@ -102,7 +110,10 @@ Response: `{
     ],
     "statusCode": 1,
     "statusText": "OK"
-}`
+}
+```
+
+Note: you can search for one value at a time. It's not possible to combine multiple search criteria.
 ### POST
 A POST request allows you to store data in the database
 
@@ -113,7 +124,7 @@ A POST request allows you to store data in the database
 
 Example: `POST localhost:3000/person`  
 Request body: `{ "name": "John", "age": 28, "nationality": "Dutch" }`  
-Respons: `{
+Response: `{
     "_id": "655de960bc9df3867465dd81",
     "statusCode": 1,
     "statusText": "OK"
@@ -151,14 +162,14 @@ Response: `{
 ### Maintenance
 There are a few special requests you can make to help you out. These all use the HTTP GET method.
 
-Request: GET localhost:3000/maintenance/status
+Request: `GET localhost:3000/maintenance/status`  
 Description: Returns a status code. A quick way to check if the API is running and has a working database connection
 
-Request: GET localhost:3000/maintenance/cleardatabase
+Request: `GET localhost:3000/maintenance/cleardatabase`  
 Description: Does what it says - permanently removes all data from your database. Good to use when you want to make a fresh start, but handle with care!
 
-Request: GET localhost:3000/maintenance/generatetestdata
-Description: Fills your database with some testdata. Any previously existing testdata will be overwritten. The testdata will be of the objectType *test*, so to see the results you can use `GET localhost:3000/test`
+Request: `GET localhost:3000/maintenance/generatetestdata`  
+Description: Fills your database with some testdata. Any previously existing testdata will be overwritten. The testdata will be of the objectType **test**, so to see the results you can use `GET localhost:3000/test`
 
 ## Statuses
 Every request returns a statusCode and a descriptive statusText in JSON format. A status code of 1 means the request was succesful, everything else indicates a problem.
