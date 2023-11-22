@@ -26,7 +26,8 @@ const statusTexts = [
     "OK",
     "No match found in database",
     "Invalid object type - allowed characters are: A-Z, a-z, 0-9, - and _",
-    "Please provide a valid id in the querystring, consisting of 24 characters"
+    "Please provide a valid id in the querystring, consisting of 24 characters",
+    "The API received invalid JSON. Please check your JSON syntax"
 ]
 
 validateParameter = (txt, type) => { 
@@ -36,6 +37,9 @@ validateParameter = (txt, type) => {
             break;
         case "id":
             var valid = /^[0-9a-z]{24}$/
+            break;
+        case "number":
+            var valid = /^[0-9]+$/
             break;
         default:
             return false;
@@ -61,16 +65,16 @@ app.get('/management/status', (req, res) => {
     if (dbStatus) {
         // we're up and running
         const response = '{' +
-            '"statusCode": 1,' +
-            '"statusText": "' + statusTexts[1] + '"' +
-        '}'
+                '"statusCode": 1,' +
+                '"statusText": "' + statusTexts[1] + '"' +
+            '}'
         res.send(response)
     } else {
         // there is no working database connection
         const response = '{' +
-            '"statusCode": 0,' +
-            '"statusText": "' + statusTexts[0] + '"' +
-        '}'
+                '"statusCode": 0,' +
+                '"statusText": "' + statusTexts[0] + '"' +
+            '}'
         res.send(response)
     }
 })
@@ -90,29 +94,29 @@ app.get('/management/generatetestdata', async(req, res) => {
         
         for (var i = 0; i < 10; i++) {
             
-            var testdata = '{' +
+            var objectData = '{' +
                 '"objectType": "test",' +
                 '"data": {' +
                     '"name": "' + testData.names[Math.floor(Math.random() * 49)] + '",' +
-                    '"age": "' +  Math.floor(Math.random() * 60 + 15) + '",' +
+                    '"age": ' +  Math.floor(Math.random() * 60 + 15) + ',' +
                     '"profession":"' + testData.professions[Math.floor(Math.random() * 49)] + '"' +
                 '}' +
             '}'
 
-            collection.insertOne(JSON.parse(testdata))
+            collection.insertOne(JSON.parse(objectData))
         }
 
         const response = '{' +
-            '"statusCode": 1,' +
-            '"statusText": "' + statusTexts[1] + '"' +
-        '}'
+                '"statusCode": 1,' +
+                '"statusText": "' + statusTexts[1] + '"' +
+            '}'
         res.send(response)
     } else {
         // there is no working database connection
         const response = '{' +
-            '"statusCode": 0,' +
-            '"statusText": "' + statusTexts[0] + '"' +
-        '}'
+                '"statusCode": 0,' +
+                '"statusText": "' + statusTexts[0] + '"' +
+            '}'
         res.send(response)
     }
 })
@@ -125,16 +129,16 @@ app.get('/management/cleardatabase', async(req, res) => {
         collection.deleteMany( {} )
 
         const response = '{' +
-            '"statusCode": 1,' +
-            '"statusText": "' + statusTexts[1] + '"' +
-        '}'
+                '"statusCode": 1,' +
+                '"statusText": "' + statusTexts[1] + '"' +
+            '}'
         res.send(response)
     } else {
         // there is no working database connection
         const response = '{' +
-            '"statusCode": 0,' +
-            '"statusText": "' + statusTexts[0] + '"' +
-        '}'
+                '"statusCode": 0,' +
+                '"statusText": "' + statusTexts[0] + '"' +
+            '}'
         res.send(response)
     }
 })
@@ -157,13 +161,23 @@ app.get('/:objectType', async(req, res) => {
                 }
                 var data = await collection.find({ objectType: req.params.objectType, _id: new ObjectId(id) }).toArray()
             } else {
-                // TODO: VALIDATE searchField and searchString
+                // TODO: sanitize searchField and searchString
                 // if no id was specified, see if there was another search parameter in the querystring. If so, construct a db query to search for requested data
                 // if multiple parameters are provided, the first is used and the rest is ignored
                 if ( Object.keys(req.query).length ) {
                     const searchField = Object.keys(req.query)[0]
                     const searchString = req.query[searchField ]
-                    const dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "data.' + searchField + '": "' + searchString + '"}')
+                    
+                    if ( validateParameter(searchString, "number") ) {
+                        // if the searchString is a number, search for both an integer or a string representing this number
+                        var dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "$or": [ {"data.' + searchField + '": "' + searchString + '" } , { "data.' + searchField + '": ' + searchString + '} ] }')
+                    } else if (searchString == 'true' || searchString == 'false' || searchString == 'null') {
+                        // if the searchString is a literal (true, false or null), search for both the literal or a string representing this number
+                        var dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "$or": [ {"data.' + searchField + '": "' + searchString + '" } , { "data.' + searchField + '": ' + searchString + '} ] }')
+                    } else {
+                        // do a regular text search
+                        var dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "data.' + searchField + '": "' + searchString + '"}')
+                    }
                     var data = await collection.find(dbQuery).toArray()
                 } else {
                     // no search paramaters were specified, so just find all instances of this objectType
@@ -200,10 +214,47 @@ app.get('/:objectType', async(req, res) => {
     } else {
         // the requested objectType had invalid characters
         const response = '{' +
-            '"records": [],' +
-            '"statusCode": 3,' +
-            '"statusText": "' + statusTexts[3] + '"' +
-        '}'
+                '"records": [],' +
+                '"statusCode": 3,' +
+                '"statusText": "' + statusTexts[3] + '"' +
+            '}'
+        res.send(response)        
+    }
+})
+
+app.post('/:objectType', async(req, res) => {
+    res.set('Content-Type', 'application/json')
+
+    if (validateParameter(req.params.objectType, "objectType")) {
+
+        if (dbStatus) {
+            const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
+            // TODO sanitise JSON
+
+            var result = await collection.insertOne({ objectType: req.params.objectType, data: req.body })
+
+            const response = '{' +
+                    '"_id": "' +  result["insertedId"] + '",' +
+                    '"statusCode": 1,' +
+                    '"statusText": "' + statusTexts[1] + '"' +
+                '}'
+                res.send(response)
+        } else {
+            // there is no working database connection
+            const response = '{' +
+                    '"_id": null,' +
+                    '"statusCode": 0,' +
+                    '"statusText": "' + statusTexts[0] + '"' +
+                '}'
+            res.send(response)
+        }
+    } else {
+        // the requested objectType had invalid characters
+        const response = '{' +
+                '"_id": null,' +
+                '"statusCode": 3,' +
+                '"statusText": "' + statusTexts[3] + '"' +
+            '}'
         res.send(response)        
     }
 })
@@ -224,7 +275,7 @@ app.delete('/:objectType', async(req, res) => {
                 if (result["deletedCount"]) {
                     // an item was deleted
                     const response = '{' +
-                            '"itemsDeleted":' +  result["deletedCount"] + ',' +
+                            '"itemsDeleted": ' +  result["deletedCount"] + ',' +
                             '"statusCode": 1,' +
                             '"statusText": "' + statusTexts[1] + '"' +
                         '}'
@@ -232,7 +283,7 @@ app.delete('/:objectType', async(req, res) => {
                 } else {
                     // no item was deleted, no match was found for the provided id and objectType
                     const response = '{' +
-                            '"records": [],' +
+                            '"itemsDeleted": 0,' +
                             '"statusCode": 2,' +
                             '"statusText": "' + statusTexts[2] + '"' +
                         '}'      
@@ -241,16 +292,16 @@ app.delete('/:objectType', async(req, res) => {
             } else {
                 // no id found in querystring or invalid id provided
                 const response = '{' +
-                '"records": [],' +
-                '"statusCode": 4,' +
-                '"statusText": "' + statusTexts[4] + '"' +
-            '}'
+                '"itemsDeleted": 0,' +
+                        '"statusCode": 4,' +
+                        '"statusText": "' + statusTexts[4] + '"' +
+                    '}'
         res.send(response)
             }
         } else {
             // there is no working database connection
             const response = '{' +
-                    '"records": [],' +
+            '"itemsDeleted": 0,' +
                     '"statusCode": 0,' +
                     '"statusText": "' + statusTexts[0] + '"' +
                 '}'
@@ -259,15 +310,34 @@ app.delete('/:objectType', async(req, res) => {
     } else {
         // the requested objectType had invalid characters
         const response = '{' +
-            '"records": [],' +
-            '"statusCode": 3,' +
-            '"statusText": "' + statusTexts[3] + '"' +
-        '}'
+                '"itemsDeleted": 0,' +
+                '"statusCode": 3,' +
+                '"statusText": "' + statusTexts[3] + '"' +
+            '}'
         res.send(response)        
     }
 })
 
+// error handler middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack)
+
+    if (err.type == 'entity.parse.failed') {
+        // if the user send invalid JSON to the API, provide an error message
+        res.set('Content-Type', 'application/json')
+        const response = '{' +
+                '"errorMessage": "' + err.message + '",' +
+                '"statusCode": 5,' +
+                '"statusText": "' + statusTexts[5] + '"' +
+            '}'
+        res.send(response)
+    } else {
+        // something else has gone wrong
+        res.status(500).send('Something broke!')
+    }
+})
+
 app.listen(process.env.PORT, () => {
-    console.log(API for Database access listening on port ' + process.env.PORT)
+    console.log('API for Database access listening on port ' + process.env.PORT)
 })
 
