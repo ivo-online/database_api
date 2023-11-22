@@ -14,7 +14,7 @@ const statusTexts = [
     "No match found in database",
     "Invalid object type - allowed characters are: A-Z, a-z, 0-9, - and _",
     "Please provide a valid id in the querystring, consisting of 24 characters",
-    "The API received invalid JSON. Please check your JSON syntax"
+    "The API received invalid JSON in the request body. Please check your JSON syntax"
 ]
 
 validateParameter = (txt, type) => { 
