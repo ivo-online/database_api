@@ -179,7 +179,7 @@ Every request returns a statusCode and a descriptive statusText in JSON format. 
 2: No match found in database  
 3: Invalid object type - allowed characters are: A-Z, a-z, 0-9, - and _  
 4: Please provide a valid id in the querystring, consisting of 24 characters  
-5: The API received invalid JSON. Please [check your JSON](https://jsonlint.com/) syntax  
+5: The API received invalid JSON in the request body. Please [check your JSON](https://jsonlint.com/) syntax  
 
 Example response:
 `{
