@@ -1,25 +1,12 @@
 require('dotenv').config()
 const express = require('express')
 const app = express()
-const testData = require('./testdata.json')
 
 // interpret all body data in the incoming HTTP request as if it were JSON, 
 // regardless of whether the HTTP request header was set correctly as: Content-Type: application/json
 app.use(express.json({ type: "*/*" }))
 
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
-
-const uri = 'mongodb+srv://' + process.env.DB_USERNAME + ':' + process.env.DB_PASS + '@' +
-  process.env.DB_HOST + '/' + process.env.DB_NAME + '?retryWrites=true&w=majority'
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-    serverApi: {
-      version: ServerApiVersion.v1,
-      strict: true,
-      deprecationErrors: true,
-    }
-})
+const testData = require('./testdata.json')
 
 const statusTexts = [
     "Database connection failed",
@@ -47,6 +34,20 @@ validateParameter = (txt, type) => {
 
     return valid.test(txt)
 }
+
+const { MongoClient, ServerApiVersion, ObjectId, CommandStartedEvent } = require('mongodb')
+
+const uri = 'mongodb+srv://' + process.env.DB_USERNAME + ':' + process.env.DB_PASS + '@' +
+  process.env.DB_HOST + '/' + process.env.DB_NAME + '?retryWrites=true&w=majority'
+
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+const client = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    }
+})
 
 var dbStatus = false
 
@@ -159,9 +160,9 @@ app.get('/:objectType', async(req, res) => {
                 } else {
                     var data = []
                 }
-                var data = await collection.find({ objectType: req.params.objectType, _id: new ObjectId(id) }).toArray()
             } else {
                 // TODO: sanitize searchField and searchString
+
                 // if no id was specified, see if there was another search parameter in the querystring. If so, construct a db query to search for requested data
                 // if multiple parameters are provided, the first is used and the rest is ignored
                 if ( Object.keys(req.query).length ) {
@@ -215,6 +216,88 @@ app.get('/:objectType', async(req, res) => {
         // the requested objectType had invalid characters
         const response = '{' +
                 '"records": [],' +
+                '"statusCode": 3,' +
+                '"statusText": "' + statusTexts[3] + '"' +
+            '}'
+        res.send(response)        
+    }
+})
+
+app.patch('/:objectType', async(req, res) => {
+    res.set('Content-Type', 'application/json')
+
+    if (validateParameter(req.params.objectType, "objectType")) {
+
+        if (dbStatus) {
+            const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
+            // The user needs to requests a specific id in the querystring, see if it is valid
+            if (req.query.id ) {
+                if ( validateParameter(req.query.id, "id") ) {
+                    const id = req.query.id
+
+                    // TODO sanitise JSON
+                    var updateFields = '{'
+                    var i = 0
+                    for(var key in req.body) {
+                        if (i != 0) {
+                            updateFields += ', '
+                        }
+                        i++
+                        updateFields += '"data.' + key + '": '
+                        
+                        // if the value is a number or a literal (true, false or null), don't add quotes. For a string, add quotes
+                        if ( validateParameter(req.body[key], "number") ) {
+                            updateFields += req.body[key]
+                        } else if (req.body[key] == true || req.body[key] == false || req.body[key] == null) {
+                            updateFields += req.body[key]
+                        } else {
+                            updateFields += '"' + req.body[key] + '"'
+                        }
+                     }
+                     updateFields += '}'
+
+                    const result = await collection.updateOne({ objectType: req.params.objectType, _id: new ObjectId(id) }, {$set: JSON.parse(updateFields) })
+
+                    if (result.matchedCount) {
+                        // send the result back in JSON format
+                        const response = '{' +
+                                '"itemsModified":' +  result.modifiedCount + ',' +
+                                '"statusCode": 1,' +
+                                '"statusText": "' + statusTexts[1] + '"' +
+                            '}'
+                        res.send(response)
+                    } else {
+                        // no matching results were found
+                        const response = '{' +
+                                '"itemsModified": 0,' +
+                                '"statusCode": 2,' +
+                                '"statusText": "' + statusTexts[2] + '"' +
+                            '}'      
+                        res.send(response)
+                    }
+                } else {
+                    // No id was provided or the id was invalid
+                    const response = '{' +
+                            '"itemsModified": 0,' +
+                            '"statusCode": 4,' +
+                            '"statusText": "' + statusTexts[4] + '"' +
+                        '}'
+                    res.send(response)
+                }
+            } 
+        } else {
+            // there is no working database connection
+            const response = '{' +
+                    '"itemsModified": 0,' +
+                    '"statusCode": 0,' +
+                    '"statusText": "' + statusTexts[0] + '"' +
+                '}'
+            res.send(response)
+        }
+    } else {
+        // the requested objectType had invalid characters
+        const response = '{' +
+                '"itemsModified": 0,' +
                 '"statusCode": 3,' +
                 '"statusText": "' + statusTexts[3] + '"' +
             '}'
@@ -292,7 +375,7 @@ app.delete('/:objectType', async(req, res) => {
             } else {
                 // no id found in querystring or invalid id provided
                 const response = '{' +
-                '"itemsDeleted": 0,' +
+                        '"itemsDeleted": 0,' +
                         '"statusCode": 4,' +
                         '"statusText": "' + statusTexts[4] + '"' +
                     '}'
@@ -333,7 +416,7 @@ app.use((err, req, res, next) => {
         res.send(response)
     } else {
         // something else has gone wrong
-        res.status(500).send('Something broke!')
+        res.status(500).send('Something went horribly wrong on the server!')
     }
 })
 
