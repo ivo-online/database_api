@@ -58,7 +58,7 @@ Response:
             }
         }
     ],
-    "statusCode": 1,
+    "statusCode": 0,
     "statusText": "OK"
 }
 ```
@@ -83,7 +83,7 @@ Response:
             }
         }
     ],
-    "statusCode": 1,
+    "statusCode": 0,
     "statusText": "OK"
 }
 ```
@@ -108,7 +108,7 @@ Response:
             }
         }
     ],
-    "statusCode": 1,
+    "statusCode": 0,
     "statusText": "OK"
 }
 ```
@@ -126,7 +126,7 @@ Example: `POST localhost:3000/person`
 Request body: `{ "name": "John", "age": 28, "nationality": "Dutch" }`  
 Response: `{
     "_id": "655de960bc9df3867465dd81",
-    "statusCode": 1,
+    "statusCode": 0,
     "statusText": "OK"
 }`
 
@@ -142,7 +142,7 @@ Example: `PATCH localhost:3000/person?id=655de960bc9df3867465dd81`
 Request body: `{ "age": 30, "hometown": "Amsterdam" }`  
 Response: `{
     "itemsModified": 1,
-    "statusCode": 1,
+    "statusCode": 0,
     "statusText": "OK"
 }`
 
@@ -156,7 +156,7 @@ A DELETE request allows you to remove an object from the database. You will need
 Example: `DELETE localhost:3000/person?id=655de960bc9df3867465dd81`  
 Response: `{
     "itemsDeleted": 1,
-    "statusCode": 1,
+    "statusCode": 0,
     "statusText": "OK"
 }`
 ### Maintenance
@@ -172,10 +172,10 @@ Request: `GET localhost:3000/maintenance/generatetestdata`
 Description: Fills your database with some testdata. Any previously existing testdata will be overwritten. The testdata will be of the objectType **test**, so to see the results you can use `GET localhost:3000/test`
 
 ## Statuses
-Every request returns a statusCode and a descriptive statusText in JSON format. A status code of 1 means the request was succesful, everything else indicates a problem.
+Every request returns a statusCode and a descriptive statusText in JSON format. A status code of 0 means the request was succesful, everything else indicates a problem.
 
-0: Database connection failed - doublecheck your .env file to see if you entered all values correctly  
-1: OK  
+0: OK  
+1: Database connection failed - doublecheck your .env file to see if you entered all values correctly  
 2: No match found in database  
 3: Invalid object type - allowed characters are: A-Z, a-z, 0-9, - and _  
 4: Please provide a valid id in the querystring, consisting of 24 characters  
@@ -183,7 +183,7 @@ Every request returns a statusCode and a descriptive statusText in JSON format. 
 
 Example response:
 `{
-    "statusCode": 1,
+    "statusCode": 0,
     "statusText": "OK"
 }`
 ## License
