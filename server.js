@@ -66,7 +66,7 @@ app.get('/maintenance/status', (req, res) => {
     if (dbStatus) {
         // we're up and running
         const response = '{' +
-                '"statusCode": 0' +
+                '"statusCode": 0,' +
                 '"statusText": "' + statusTexts[0] + '"' +
             '}'
         res.send(response)
@@ -108,7 +108,7 @@ app.get('/maintenance/generatetestdata', async(req, res) => {
         }
 
         const response = '{' +
-                '"statusCode": 0' +
+                '"statusCode": 0,' +
                 '"statusText": "' + statusTexts[0] + '"' +
             '}'
         res.send(response)
@@ -130,7 +130,7 @@ app.get('/maintenance/cleardatabase', async(req, res) => {
         collection.deleteMany( {} )
 
         const response = '{' +
-                '"statusCode": 0' +
+                '"statusCode": 0,' +
                 '"statusText": "' + statusTexts[0] + '"' +
             '}'
         res.send(response)
@@ -190,7 +190,7 @@ app.get('/:objectType', async(req, res) => {
                 // send the results back in JSON format
                 const response = '{' +
                         '"records":' +  JSON.stringify(data) + ',' +
-                        '"statusCode": 0' +
+                        '"statusCode": 0,' +
                         '"statusText": "' + statusTexts[0] + '"' +
                     '}'
                 res.send(response)
@@ -262,7 +262,7 @@ app.patch('/:objectType', async(req, res) => {
                         // send the result back in JSON format
                         const response = '{' +
                                 '"itemsModified":' +  result.modifiedCount + ',' +
-                                '"statusCode": 0' +
+                                '"statusCode": 0,' +
                                 '"statusText": "' + statusTexts[0] + '"' +
                             '}'
                         res.send(response)
@@ -318,7 +318,7 @@ app.post('/:objectType', async(req, res) => {
 
             const response = '{' +
                     '"_id": "' +  result["insertedId"] + '",' +
-                    '"statusCode": 0' +
+                    '"statusCode": 0,' +
                     '"statusText": "' + statusTexts[0] + '"' +
                 '}'
                 res.send(response)
@@ -359,7 +359,7 @@ app.delete('/:objectType', async(req, res) => {
                     // an item was deleted
                     const response = '{' +
                             '"itemsDeleted": ' +  result["deletedCount"] + ',' +
-                            '"statusCode": 0' +
+                            '"statusCode": 0,' +
                             '"statusText": "' + statusTexts[0] + '"' +
                         '}'
                     res.send(response)
