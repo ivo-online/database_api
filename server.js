@@ -1,6 +1,9 @@
 require('dotenv').config()
 const express = require('express')
+const cors = require('cors')
 const app = express()
+
+app.use( cors() )
 
 // interpret all body data in the incoming HTTP request as if it were JSON, 
 // regardless of whether the HTTP request header was set correctly as: Content-Type: application/json
@@ -62,7 +65,6 @@ client.connect()
 
 app.get('/maintenance/status', (req, res) => {
     res.set('Content-Type', 'application/json')
-    res.set('Access-Control-Allow-Origin', '*')
 
     if (dbStatus) {
         // we're up and running
@@ -83,7 +85,6 @@ app.get('/maintenance/status', (req, res) => {
 
 app.get('/maintenance/generatetestdata', async(req, res) => {
     res.set('Content-Type', 'application/json')
-    res.set('Access-Control-Allow-Origin', '*')
 
     if (dbStatus) {
         const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
@@ -126,7 +127,6 @@ app.get('/maintenance/generatetestdata', async(req, res) => {
 
 app.get('/maintenance/cleardatabase', async(req, res) => {
     res.set('Content-Type', 'application/json')
-    res.set('Access-Control-Allow-Origin', '*')
 
     if (dbStatus) {
         const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
@@ -149,7 +149,6 @@ app.get('/maintenance/cleardatabase', async(req, res) => {
 
 app.get('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
-    res.set('Access-Control-Allow-Origin', '*')
 
     if (validateParameter(req.params.objectType, "objectType")) {
 
@@ -229,7 +228,6 @@ app.get('/:objectType', async(req, res) => {
 
 app.patch('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
-    res.set('Access-Control-Allow-Origin', '*')
 
     if (validateParameter(req.params.objectType, "objectType")) {
 
@@ -312,7 +310,6 @@ app.patch('/:objectType', async(req, res) => {
 
 app.post('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
-    res.set('Access-Control-Allow-Origin', '*')
 
     if (validateParameter(req.params.objectType, "objectType")) {
 
@@ -350,7 +347,6 @@ app.post('/:objectType', async(req, res) => {
 
 app.delete('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
-    res.set('Access-Control-Allow-Origin', '*')
 
     if (validateParameter(req.params.objectType, "objectType")) {
 
@@ -415,7 +411,6 @@ app.use((err, req, res, next) => {
     if (err.type == 'entity.parse.failed') {
         // if the user send invalid JSON to the API, provide an error message
         res.set('Content-Type', 'application/json')
-        res.set('Access-Control-Allow-Origin', '*')
         const response = '{' +
                 '"errorMessage": "' + err.message + '",' +
                 '"statusCode": 5,' +
@@ -424,7 +419,6 @@ app.use((err, req, res, next) => {
         res.send(response)
     } else {
         // something else has gone wrong
-        res.set('Access-Control-Allow-Origin', '*')
         res.status(500).send('Something went horribly wrong on the server!')
     }
 })
