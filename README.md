@@ -3,7 +3,7 @@
 This API allows you to store and find data in a database, using API calls from your front-end code, without worrying (too much) about what happens in the back-end.
 ## Installation
 1. Clone this repository to a suitable folder on your own computer.
-2. In this folder, run `nmp install` from the command line to install the neccesary node modules.
+2. In this folder, run `npm install` from the command line to install the neccesary node modules.
 3. Rename the file `.env-sample` to `.env` and in this file, add the correct values for DB_HOST, DB_NAME, DB_USERNAME and DB_PASS
 4. run `node server.js` from the command line to start the API
 
