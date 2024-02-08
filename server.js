@@ -1,8 +1,9 @@
 require('dotenv').config()
 const express = require('express')
-const cors = require('cors')
 const app = express()
 
+// enable support for Cross-Origin Resource Sharing
+const cors = require('cors')
 app.use( cors() )
 
 // interpret all body data in the incoming HTTP request as if it were JSON, 
@@ -20,18 +21,25 @@ const statusTexts = [
     "The API received invalid JSON in the request body. Please check your JSON syntax"
 ]
 
+// function to check if a variable contains valid data
 validateParameter = (txt, type) => { 
+    let valid
+
     switch(type) {
         case "objectType":
-            var valid = /^[0-9a-zA-Z_\-]+$/
+            // allowed characters for objectType are: A-Z, a-z, 0-9, - and _
+            valid = /^[0-9a-zA-Z_\-]+$/
             break;
         case "id":
-            var valid = /^[0-9a-z]{24}$/
+            // a MongoDB id should have 24 characters (numbers or lowercase letters)
+            valid = /^[0-9a-z]{24}$/
             break;
         case "number":
-            var valid = /^[0-9]+$/
+            // a number can only have 0-9
+            valid = /^[0-9]+$/
             break;
         default:
+            // other types cannot be checked,so just return false
             return false;
       }
 
@@ -40,8 +48,8 @@ validateParameter = (txt, type) => {
 
 const { MongoClient, ServerApiVersion, ObjectId, CommandStartedEvent } = require('mongodb')
 
-const uri = 'mongodb+srv://' + process.env.DB_USERNAME + ':' + process.env.DB_PASS + '@' +
-  process.env.DB_HOST + '/' + process.env.DB_NAME + '?retryWrites=true&w=majority'
+// Construct the URL used to connect to the database from the information in the .env file
+const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@${process.env.DB_HOST}/${process.env.DB_NAME}?retryWrites=true&w=majority`
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -52,17 +60,20 @@ const client = new MongoClient(uri, {
     }
 })
 
-var dbStatus = false
+let dbStatus = false
 
+// try to open a database connection
 client.connect()
     .then((res) => {
         console.log('Database connection established')
         dbStatus = true
     })
     .catch((err) => {
-        console.log('Database connection error:\n', err, '\nFor uri: ', uri)
+        console.log(`Database connection error - ${err}`)
+        console.log(`For uri - ${uri}`)
     })
 
+// this route responds with a status that indicates if the API has a working database connection
 app.get('/maintenance/status', (req, res) => {
     res.set('Content-Type', 'application/json')
 
@@ -83,6 +94,7 @@ app.get('/maintenance/status', (req, res) => {
     }
 })
 
+// this route fills the database with random test data of objectType test
 app.get('/maintenance/generatetestdata', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
@@ -96,9 +108,9 @@ app.get('/maintenance/generatetestdata', async(req, res) => {
             collection.deleteMany( { "objectType": "test" } )
         }
         
-        for (var i = 0; i < 10; i++) {
+        for (let i = 0; i < 10; i++) {
             
-            var objectData = '{' +
+            let objectData = '{' +
                 '"objectType": "test",' +
                 '"data": {' +
                     '"name": "' + testData.names[Math.floor(Math.random() * 49)] + '",' +
@@ -125,6 +137,7 @@ app.get('/maintenance/generatetestdata', async(req, res) => {
     }
 })
 
+// this route empties the database
 app.get('/maintenance/cleardatabase', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
@@ -147,45 +160,49 @@ app.get('/maintenance/cleardatabase', async(req, res) => {
     }
 })
 
+// this route returns data of the requested objectType from the database. 
+// It is possible to search for a specific ID or a certain field in the data by adding a search parameter to the querystring
+// If the querystring is empty, all existing objects are returned
 app.get('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
     if (validateParameter(req.params.objectType, "objectType")) {
-
         if (dbStatus) {
             const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
+            let data
+
             // if the user requests a specific id in the querystring, see if it is valid
             // if so, try to find this id in the database. If the id is invalid, no data is returned by default
             if (req.query.id ) {
                 if ( validateParameter(req.query.id, "id") ) {
-                    var id = req.query.id
-                    var data = await collection.find({ objectType: req.params.objectType, _id: new ObjectId(id) }).toArray()
+                    let id = req.query.id
+                    data = await collection.find({ objectType: req.params.objectType, _id: new ObjectId(id) }).toArray()
                 } else {
-                    var data = []
+                    data = []
                 }
             } else {
-                // TODO: sanitize searchField and searchString
-
                 // if no id was specified, see if there was another search parameter in the querystring. If so, construct a db query to search for requested data
                 // if multiple parameters are provided, the first is used and the rest is ignored
                 if ( Object.keys(req.query).length ) {
+                    // TODO: sanitize searchField and searchString
                     const searchField = Object.keys(req.query)[0]
                     const searchString = req.query[searchField ]
+                    let dbQuery
                     
                     if ( validateParameter(searchString, "number") ) {
                         // if the searchString is a number, search for both an integer or a string representing this number
-                        var dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "$or": [ {"data.' + searchField + '": "' + searchString + '" } , { "data.' + searchField + '": ' + searchString + '} ] }')
+                        dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "$or": [ {"data.' + searchField + '": "' + searchString + '" } , { "data.' + searchField + '": ' + searchString + '} ] }')
                     } else if (searchString == 'true' || searchString == 'false' || searchString == 'null') {
                         // if the searchString is a literal (true, false or null), search for both the literal or a string representing this number
-                        var dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "$or": [ {"data.' + searchField + '": "' + searchString + '" } , { "data.' + searchField + '": ' + searchString + '} ] }')
+                        dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "$or": [ {"data.' + searchField + '": "' + searchString + '" } , { "data.' + searchField + '": ' + searchString + '} ] }')
                     } else {
                         // do a regular text search
-                        var dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "data.' + searchField + '": "' + searchString + '"}')
+                        dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "data.' + searchField + '": "' + searchString + '"}')
                     }
-                    var data = await collection.find(dbQuery).toArray()
+                    data = await collection.find(dbQuery).toArray()
                 } else {
                     // no search paramaters were specified, so just find all instances of this objectType
-                    var data = await collection.find({ objectType: req.params.objectType }).toArray()
+                    data = await collection.find({ objectType: req.params.objectType }).toArray()
                 }
             }
                   
@@ -226,6 +243,8 @@ app.get('/:objectType', async(req, res) => {
     }
 })
 
+// Update a record of the specified objectType with new data. 
+// The MongoDB id of the record needs to be specified in the querystring
 app.patch('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
@@ -238,10 +257,9 @@ app.patch('/:objectType', async(req, res) => {
                 if ( validateParameter(req.query.id, "id") ) {
                     const id = req.query.id
 
-                    // TODO sanitise JSON
-                    var updateFields = '{'
-                    var i = 0
-                    for(var key in req.body) {
+                    let updateFields = '{'
+                    let i = 0
+                    for(let key in req.body) {
                         if (i != 0) {
                             updateFields += ', '
                         }
@@ -308,6 +326,8 @@ app.patch('/:objectType', async(req, res) => {
     }
 })
 
+// Add a record of the specified objectType with new data. 
+// The MongoDB id of the new record is returned
 app.post('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
@@ -315,9 +335,7 @@ app.post('/:objectType', async(req, res) => {
 
         if (dbStatus) {
             const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
-            // TODO sanitise JSON
-
-            var result = await collection.insertOne({ objectType: req.params.objectType, data: req.body })
+            const result = await collection.insertOne({ objectType: req.params.objectType, data: req.body })
 
             const response = '{' +
                     '"_id": "' +  result["insertedId"] + '",' +
@@ -345,6 +363,8 @@ app.post('/:objectType', async(req, res) => {
     }
 })
 
+// Delete a record of the specified objectType with new data. 
+// The MongoDB id of the record needs to be specified in the querystring
 app.delete('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
@@ -355,8 +375,8 @@ app.delete('/:objectType', async(req, res) => {
             // if the user requests a specific id in the querystring, see if it is valid
             // if so, try to find this id in the database. 
             if (req.query.id && validateParameter(req.query.id, "id") ) {
-                var id = req.query.id
-                var result = await collection.deleteOne({ objectType: req.params.objectType, _id: new ObjectId(id) })
+                const id = req.query.id
+                const result = await collection.deleteOne({ objectType: req.params.objectType, _id: new ObjectId(id) })
 
                 if (result["deletedCount"]) {
                     // an item was deleted
@@ -382,7 +402,7 @@ app.delete('/:objectType', async(req, res) => {
                         '"statusCode": 4,' +
                         '"statusText": "' + statusTexts[4] + '"' +
                     '}'
-        res.send(response)
+                res.send(response)
             }
         } else {
             // there is no working database connection
@@ -406,10 +426,11 @@ app.delete('/:objectType', async(req, res) => {
 
 // error handler middleware
 app.use((err, req, res, next) => {
+    // log the error to the console
     console.error(err.stack)
 
     if (err.type == 'entity.parse.failed') {
-        // if the user send invalid JSON to the API, provide an error message
+        // if the user send invalid JSON to the API, send back an error message
         res.set('Content-Type', 'application/json')
         const response = '{' +
                 '"errorMessage": "' + err.message + '",' +
@@ -423,7 +444,8 @@ app.use((err, req, res, next) => {
     }
 })
 
+// start the webserver
 app.listen(process.env.PORT, () => {
-    console.log('API for Database access listening on port ' + process.env.PORT)
+    console.log(`Project Tech Data API listening on port ${process.env.PORT}`)
 })
 
