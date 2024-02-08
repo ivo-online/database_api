@@ -1,4 +1,4 @@
-# The CMD Project Tech Database API
+# The CMD Project Tech Data API
 ## What does it do?
 This API allows you to store and find data in a database, using API calls from your front-end code, without worrying (too much) about what happens in the back-end.
 ## Installation
