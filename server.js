@@ -169,7 +169,7 @@ app.get('/:objectType', async(req, res) => {
     if (validateParameter(req.params.objectType, "objectType")) {
         if (dbStatus) {
             const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
-            let data
+            let data, dbQuery
 
             // if the user requests a specific id in the querystring, see if it is valid
             // if so, try to find this id in the database. If the id is invalid, no data is returned by default
@@ -188,15 +188,33 @@ app.get('/:objectType', async(req, res) => {
                     const searchField = Object.keys(req.query)[0]
                     const searchString = req.query[searchField ]
 
+                    // searchString is taken from the querystring in the URL of the HTTP request, which always has datatype string
+                    // so, we cannot really tell if the user wanted to search for a string or another specifc datatype
+                    // when in doubt, we'll search for both the string and the alternative datatype
                     if ( validateParameter(searchString, "number") ) {
-                        // if the searchString is a number, search for both an integer or a string representing this number
-                        dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "$or": [ {"data.' + searchField + '": "' + searchString + '" } , { "data.' + searchField + '": ' + searchString + '} ] }')
+                        // if the searchString contains an (integer) number, search for both an integer or a string representing this number
+                        dbQuery = JSON.parse(`{
+                            "objectType": "${req.params.objectType}",
+                            "$or": [
+                                {"data.${searchField}": ${searchString}},
+                                {"data.${searchField}": "${searchString}"}
+                            ] 
+                        }`)                    
                     } else if (searchString == 'true' || searchString == 'false' || searchString == 'null') {
-                        // if the searchString is a literal (true, false or null), search for both the literal or a string representing this number
-                        dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "$or": [ {"data.' + searchField + '": "' + searchString + '" } , { "data.' + searchField + '": ' + searchString + '} ] }')
+                        // if the searchString is a JavaScript literal (true, false or null), search for both the literal or a string representing this literal
+                        dbQuery = JSON.parse(`{
+                            "objectType": "${req.params.objectType}",
+                            "$or": [
+                                {"data.${searchField}": ${searchString}},
+                                {"data.${searchField}": "${searchString}"}
+                            ] 
+                        }`)
                     } else {
-                        // do a regular text search
-                        dbQuery = JSON.parse('{ "objectType": "' + req.params.objectType + '", "data.' + searchField + '": "' + searchString + '"}')
+                        // otherwise just do a regular text search
+                        dbQuery = JSON.parse(`{
+                             "objectType": "${req.params.objectType}",
+                             "data.${searchField}": "${searchString}"
+                        }`)
                     }
                     data = await collection.find(dbQuery).toArray()
                 } else {
@@ -259,19 +277,19 @@ app.patch('/:objectType', async(req, res) => {
                     let updateFields = '{'
                     let i = 0
                     for(let key in req.body) {
+                        // if the user wants to update multiple fields at once, seperate them with a ,
                         if (i != 0) {
                             updateFields += ', '
                         }
                         i++
-                        updateFields += '"data.' + key + '": '
                         
-                        // if the value is a number or a literal (true, false or null), don't add quotes. For a string, add quotes
+                        // if the value is a number or a literal (true, false or null), don't add quotes around the value. For a string, do add quotes
                         if ( validateParameter(req.body[key], "number") ) {
-                            updateFields += req.body[key]
+                            updateFields += `"data.${key}": ${req.body[key]}`
                         } else if (req.body[key] == true || req.body[key] == false || req.body[key] == null) {
-                            updateFields += req.body[key]
+                            updateFields += `"data.${key}": ${req.body[key]}`
                         } else {
-                            updateFields += '"' + req.body[key] + '"'
+                            updateFields += `"data.${key}": "${req.body[key]}"`
                         }
                      }
                      updateFields += '}'
