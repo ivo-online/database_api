@@ -270,59 +270,57 @@ app.patch('/:objectType', async(req, res) => {
         if (dbStatus) {
             const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
             // The user needs to requests a specific id in the querystring, see if it is valid
-            if (req.query.id ) {
-                if ( validateParameter(req.query.id, "id") ) {
-                    const id = req.query.id
+            if ( req.query.id && validateParameter(req.query.id, "id") ) {
+                const id = req.query.id
 
-                    let updateFields = '{'
-                    let i = 0
-                    for(let key in req.body) {
-                        // if the user wants to update multiple fields at once, seperate them with a ,
-                        if (i != 0) {
-                            updateFields += ', '
-                        }
-                        i++
-                        
-                        // if the value is a number or a literal (true, false or null), don't add quotes around the value. For a string, do add quotes
-                        if ( validateParameter(req.body[key], "number") ) {
-                            updateFields += `"data.${key}": ${req.body[key]}`
-                        } else if (req.body[key] == true || req.body[key] == false || req.body[key] == null) {
-                            updateFields += `"data.${key}": ${req.body[key]}`
-                        } else {
-                            updateFields += `"data.${key}": "${req.body[key]}"`
-                        }
-                     }
-                     updateFields += '}'
-
-                    const result = await collection.updateOne({ objectType: req.params.objectType, _id: new ObjectId(id) }, {$set: JSON.parse(updateFields) })
-                    
-                    if (result.matchedCount) {
-                        // send the result back in JSON format
-                        const response = `{
-                                "itemsModified": ${result.modifiedCount},
-                                "statusCode": 0,
-                                "statusText": "${statusTexts[0]}"
-                            }`
-                        res.send(response)
-                    } else {
-                        // no matching results were found
-                        const response = `{
-                            "itemsModified": 0,
-                            "statusCode": 2,
-                            "statusText": "${statusTexts[2]}"
-                        }`
-                        res.send(response)
+                let updateFields = '{'
+                let i = 0
+                for(let key in req.body) {
+                    // if the user wants to update multiple fields at once, seperate them with a ,
+                    if (i != 0) {
+                        updateFields += ', '
                     }
+                    i++
+                    
+                    // if the value is a number or a literal (true, false or null), don't add quotes around the value. For a string, do add quotes
+                    if ( validateParameter(req.body[key], "number") ) {
+                        updateFields += `"data.${key}": ${req.body[key]}`
+                    } else if (req.body[key] == true || req.body[key] == false || req.body[key] == null) {
+                        updateFields += `"data.${key}": ${req.body[key]}`
+                    } else {
+                        updateFields += `"data.${key}": "${req.body[key]}"`
+                    }
+                    }
+                    updateFields += '}'
+
+                const result = await collection.updateOne({ objectType: req.params.objectType, _id: new ObjectId(id) }, {$set: JSON.parse(updateFields) })
+                
+                if (result.matchedCount) {
+                    // send the result back in JSON format
+                    const response = `{
+                            "itemsModified": ${result.modifiedCount},
+                            "statusCode": 0,
+                            "statusText": "${statusTexts[0]}"
+                        }`
+                    res.send(response)
                 } else {
-                    // No id was provided or the id was invalid
+                    // no matching results were found
                     const response = `{
                         "itemsModified": 0,
-                        "statusCode": 4,
-                        "statusText": "${statusTexts[4]}"
+                        "statusCode": 2,
+                        "statusText": "${statusTexts[2]}"
                     }`
                     res.send(response)
                 }
-            } 
+            } else {
+                // No id was provided or the id was invalid
+                const response = `{
+                    "itemsModified": 0,
+                    "statusCode": 4,
+                    "statusText": "${statusTexts[4]}"
+                }`
+                res.send(response)
+            }
         } else {
             // there is no working database connection
             const response = `{
@@ -441,13 +439,13 @@ app.delete('/:objectType', async(req, res) => {
     }
 })
 
-// handle 404 errors 
+// middleware to handle 404 errors 
 app.use((req, res, next) => {
     console.log('404 error at URL: ' + req.url)
     res.status(404).sendFile('error_pages/404.html', {root: __dirname})
-  })
+})
 
-// error handler middleware
+// middleware to handle server errors
 app.use((err, req, res, next) => {
     // log the error to the console
     console.error(err.stack)
