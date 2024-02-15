@@ -441,6 +441,12 @@ app.delete('/:objectType', async(req, res) => {
     }
 })
 
+// handle 404 errors 
+app.use((req, res, next) => {
+    console.log('404 error at URL: ' + req.url)
+    res.status(404).sendFile('error_pages/404.html', {root: __dirname})
+  })
+
 // error handler middleware
 app.use((err, req, res, next) => {
     // log the error to the console
@@ -457,7 +463,8 @@ app.use((err, req, res, next) => {
         res.send(response)
     } else {
         // something else has gone wrong
-        res.status(500).send('Something went horribly wrong on the server!')
+        console.log('500 error at URL: ' + req.url)
+        res.status(500).sendFile('error_pages/500.html', {root: __dirname})
     }
 })
 
