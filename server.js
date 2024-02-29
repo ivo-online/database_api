@@ -447,9 +447,6 @@ app.use((req, res, next) => {
 
 // middleware to handle server errors
 app.use((err, req, res, next) => {
-    // log the error to the console
-    console.error(err.stack)
-
     if (err.type == 'entity.parse.failed') {
         // if the user send invalid JSON to the API, send back an error message
         res.set('Content-Type', 'application/json')
@@ -464,6 +461,9 @@ app.use((err, req, res, next) => {
         console.log('500 error at URL: ' + req.url)
         res.status(500).sendFile('error_pages/500.html', {root: __dirname})
     }
+
+    // log the error details to the console
+    console.error(err.stack)
 })
 
 // start the webserver
