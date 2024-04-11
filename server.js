@@ -8,45 +8,45 @@ app.use( cors() )
 
 // interpret all body data in the incoming HTTP request as if it were JSON, 
 // regardless of whether the HTTP request header was set correctly as: Content-Type: application/json
-app.use(express.json({ type: "*/*" }))
+app.use(express.json({ type: '*/*' }))
 
 const testData = require('./testdata.json')
 
 const statusTexts = [
-    "OK",
-    "Database connection failed",
-    "No match found in database",
-    "Invalid object type - allowed characters are: A-Z, a-z, 0-9, - and _",
-    "Please provide a valid id in the querystring, consisting of 24 characters",
-    "The API received invalid JSON in the request body. Please check your JSON syntax"
+    'OK',
+    'Database connection failed',
+    'No match found in database',
+    'Invalid object type - allowed characters are: A-Z, a-z, 0-9, - and _',
+    'Please provide a valid id in the querystring, consisting of 24 characters',
+    'The API received invalid JSON in the request body. Please check your JSON syntax'
 ]
 
 // function to check if a variable contains valid data
-validateParameter = (txt, type) => { 
+const validateParameter = (txt, type) => { 
     let valid
 
     switch(type) {
-        case "objectType":
+        case 'objectType':
             // allowed characters for objectType are: A-Z, a-z, 0-9, - and _
-            valid = /^[0-9a-zA-Z_\-]+$/
-            break;
-        case "id":
+            valid = /^[0-9a-zA-Z\-_]+$/
+            break
+        case 'id':
             // a MongoDB id should have 24 characters (numbers or lowercase letters)
             valid = /^[0-9a-z]{24}$/
-            break;
-        case "number":
+            break
+        case 'number':
             // a number can only have 0-9
             valid = /^[0-9]+$/
-            break;
+            break
         default:
             // other types cannot be checked,so just return false
-            return false;
-      }
+            return false
+    }
 
     return valid.test(txt)
 }
 
-const { MongoClient, ServerApiVersion, ObjectId, CommandStartedEvent } = require('mongodb')
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb')
 
 // Construct the URL used to connect to the database from the information in the .env file
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@${process.env.DB_HOST}/${process.env.DB_NAME}?retryWrites=true&w=majority`
@@ -54,9 +54,9 @@ const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@${p
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
     serverApi: {
-      version: ServerApiVersion.v1,
-      strict: true,
-      deprecationErrors: true,
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
     }
 })
 
@@ -64,7 +64,7 @@ let dbStatus = false
 
 // try to open a database connection
 client.connect()
-    .then((res) => {
+    .then(() => {
         console.log('Database connection established')
         dbStatus = true
     })
@@ -102,16 +102,16 @@ app.get('/maintenance/generatetestdata', async(req, res) => {
         const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
 
         // check if testdata already exists. If so, delete it and replace with new testdata
-        const data = await collection.find({ objectType: "test" }).toArray()
+        const data = await collection.find({ objectType: 'test' }).toArray()
         
         if (data[0]) {
-            collection.deleteMany( {objectType: "test"} )
+            collection.deleteMany( {objectType: 'test'} )
         }
         
         for (let i = 0; i < 10; i++) {
             
             let objectData = {
-                objectType: "test",
+                objectType: 'test',
                 data: {
                     name: testData.names[Math.floor(Math.random() * 49)],
                     age: Math.floor(Math.random() * 60 + 15),
@@ -166,7 +166,7 @@ app.get('/maintenance/cleardatabase', async(req, res) => {
 app.get('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
-    if (validateParameter(req.params.objectType, "objectType")) {
+    if (validateParameter(req.params.objectType, 'objectType')) {
         if (dbStatus) {
             const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
             let data, dbQuery
@@ -174,7 +174,7 @@ app.get('/:objectType', async(req, res) => {
             // if the user requests a specific id in the querystring, see if it is valid
             // if so, try to find this id in the database. If the id is invalid, no data is returned by default
             if (req.query.id ) {
-                if ( validateParameter(req.query.id, "id") ) {
+                if ( validateParameter(req.query.id, 'id') ) {
                     let id = req.query.id
                     data = await collection.find({ objectType: req.params.objectType, _id: new ObjectId(id) }).toArray()
                 } else {
@@ -191,7 +191,7 @@ app.get('/:objectType', async(req, res) => {
                     // searchString is taken from the querystring in the URL of the HTTP request, which always has datatype string
                     // so, we cannot really tell if the user wanted to search for a string or another specifc datatype
                     // when in doubt, we'll search for both the string and the alternative datatype
-                    if ( validateParameter(searchString, "number") ) {
+                    if ( validateParameter(searchString, 'number') ) {
                         // if the searchString contains an (integer) number, search for both an integer or a string representing this number
                         dbQuery = JSON.parse(`{
                             "objectType": "${req.params.objectType}",
@@ -265,12 +265,12 @@ app.get('/:objectType', async(req, res) => {
 app.patch('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
-    if (validateParameter(req.params.objectType, "objectType")) {
+    if (validateParameter(req.params.objectType, 'objectType')) {
 
         if (dbStatus) {
             const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
             // The user needs to requests a specific id in the querystring, see if it is valid
-            if ( req.query.id && validateParameter(req.query.id, "id") ) {
+            if ( req.query.id && validateParameter(req.query.id, 'id') ) {
                 const id = req.query.id
 
                 let updateFields = '{'
@@ -283,15 +283,15 @@ app.patch('/:objectType', async(req, res) => {
                     i++
                     
                     // if the value is a number or a literal (true, false or null), don't add quotes around the value. For a string, do add quotes
-                    if ( validateParameter(req.body[key], "number") ) {
+                    if ( validateParameter(req.body[key], 'number') ) {
                         updateFields += `"data.${key}": ${req.body[key]}`
                     } else if (req.body[key] == true || req.body[key] == false || req.body[key] == null) {
                         updateFields += `"data.${key}": ${req.body[key]}`
                     } else {
                         updateFields += `"data.${key}": "${req.body[key]}"`
                     }
-                    }
-                    updateFields += '}'
+                }
+                updateFields += '}'
 
                 const result = await collection.updateOne({ objectType: req.params.objectType, _id: new ObjectId(id) }, {$set: JSON.parse(updateFields) })
                 
@@ -346,14 +346,14 @@ app.patch('/:objectType', async(req, res) => {
 app.post('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
-    if (validateParameter(req.params.objectType, "objectType")) {
+    if (validateParameter(req.params.objectType, 'objectType')) {
 
         if (dbStatus) {
             const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
             const result = await collection.insertOne({ objectType: req.params.objectType, data: req.body })
 
             const response = `{
-                "_id": "${result["insertedId"]}",
+                "_id": "${result['insertedId']}",
                 "statusCode": 0,
                 "statusText": "${statusTexts[0]}"
             }`
@@ -383,20 +383,20 @@ app.post('/:objectType', async(req, res) => {
 app.delete('/:objectType', async(req, res) => {
     res.set('Content-Type', 'application/json')
 
-    if (validateParameter(req.params.objectType, "objectType")) {
+    if (validateParameter(req.params.objectType, 'objectType')) {
 
         if (dbStatus) {
             const collection = client.db(process.env.DB_NAME).collection(process.env.DB_COLLECTION)
             // if the user requests a specific id in the querystring, see if it is valid
             // if so, try to find this id in the database. 
-            if (req.query.id && validateParameter(req.query.id, "id") ) {
+            if (req.query.id && validateParameter(req.query.id, 'id') ) {
                 const id = req.query.id
                 const result = await collection.deleteOne({ objectType: req.params.objectType, _id: new ObjectId(id) })
 
-                if (result["deletedCount"]) {
+                if (result['deletedCount']) {
                     // an item was deleted
                     const response = `{
-                        "itemsDeleted": ${result["deletedCount"]},
+                        "itemsDeleted": ${result['deletedCount']},
                         "statusCode": 0,
                         "statusText": "${statusTexts[0]}"
                     }` 
